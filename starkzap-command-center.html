@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Starkzap Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#060608;--s1:#0c0c10;--s2:#121218;--s3:#18181f;
+  --b1:#222230;--b2:#32324a;--b3:#484860;
+  --tx:#f0f0ff;--m1:#7070a0;--m2:#404060;
+  --acc:#FF4F0B;--acc2:#FF7A3D;
+  --green:#00e676;--blue:#2979ff;--purple:#aa00ff;--teal:#00bcd4;--amber:#ffab00;
+  --red:#ff1744;
+  --glow-acc:rgba(255,79,11,.15);
+  --glow-green:rgba(0,230,118,.12);
+  --glow-blue:rgba(41,121,255,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);}
+
+/* SCANLINES */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:1000;}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:52px;background:rgba(6,6,8,.95);border-bottom:1px solid var(--b1);position:relative;z-index:10;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-ic{width:30px;height:30px;background:var(--acc);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:#fff;}
+.logo-tx{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;letter-spacing:.04em;}
+.logo-tx span{color:var(--acc);}
+.logo-sub{font-size:9px;color:var(--m1);letter-spacing:.12em;text-transform:uppercase;font-family:'DM Mono',monospace;border:1px solid var(--b2);padding:2px 6px;border-radius:4px;}
+.topbar-center{display:flex;align-items:center;gap:16px;}
+.live-ind{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--green);font-family:'DM Mono',monospace;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:livepulse 1.2s infinite;}
+@keyframes livepulse{0%,100%{opacity:1;box-shadow:0 0 8px var(--green)}50%{opacity:.5;box-shadow:0 0 2px var(--green)}}
+.stat-pill{display:flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--b1);border-radius:20px;padding:4px 12px;font-size:11px;font-family:'DM Mono',monospace;}
+.stat-pill .label{color:var(--m1);}
+.stat-pill .value{color:var(--tx);font-weight:500;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.xray-toggle{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:600;transition:.2s;user-select:none;}
+.xray-toggle:hover{border-color:var(--b2);}
+.xray-toggle.on{border-color:var(--acc);color:var(--acc);background:rgba(255,79,11,.06);}
+.xray-toggle .xray-ic{font-size:14px;}
+.connect-btn{background:var(--acc);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.15s;}
+.connect-btn:hover{background:var(--acc2);}
+.wallet-chip{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:6px 12px;font-size:11px;cursor:pointer;}
+.wc-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+.wc-addr{font-family:'DM Mono',monospace;color:var(--m1);}
+
+/* MAIN GRID */
+.grid{display:grid;grid-template-columns:260px 1fr 280px;grid-template-rows:1fr 180px;height:calc(100vh - 52px);gap:1px;background:var(--b1);}
+.panel{background:var(--bg);position:relative;overflow:hidden;}
+.panel-label{position:absolute;top:12px;left:14px;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--m2);font-family:'DM Mono',monospace;z-index:5;}
+
+/* LEFT PANEL — TOKEN PRICES */
+#panel-tokens{grid-row:1/2;}
+.token-list{padding:36px 14px 14px;}
+.tok-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:6px;cursor:pointer;transition:.15s;position:relative;}
+.tok-row:hover{background:var(--s1);}
+.tok-row.active{background:var(--s1);border:1px solid var(--b1);}
+.tok-ic{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;flex-shrink:0;}
+.tok-info{flex:1;}
+.tok-sym{font-size:13px;font-weight:700;line-height:1.2;}
+.tok-name{font-size:10px;color:var(--m1);}
+.tok-price{text-align:right;}
+.tok-usd{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;}
+.tok-change{font-size:10px;font-family:'DM Mono',monospace;}
+.tok-change.up{color:var(--green);}
+.tok-change.down{color:var(--red);}
+.price-bar{height:2px;border-radius:1px;margin-top:6px;overflow:hidden;background:var(--s2);}
+.price-fill{height:100%;border-radius:1px;transition:width .5s ease;}
+
+/* CENTER — VISUALIZATION */
+#panel-viz{grid-row:1/2;grid-column:2/3;}
+canvas#flow-canvas{position:absolute;inset:0;width:100%;height:100%;}
+.viz-overlay{position:absolute;inset:0;pointer-events:none;}
+.center-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+.ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;border:1px solid;animation:rotate linear infinite;}
+.ring-1{width:160px;height:160px;border-color:rgba(255,79,11,.2);animation-duration:20s;}
+.ring-2{width:240px;height:240px;border-color:rgba(255,79,11,.1);animation-duration:35s;animation-direction:reverse;}
+.ring-3{width:320px;height:320px;border-color:rgba(255,79,11,.06);animation-duration:55s;}
+@keyframes rotate{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.center-hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70px;height:70px;background:var(--acc);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#fff;box-shadow:0 0 40px rgba(255,79,11,.4),0 0 80px rgba(255,79,11,.2);z-index:3;}
+.node{position:absolute;transform:translate(-50%,-50%);}
+.node-ic{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;font-family:'Barlow Condensed',sans-serif;border:2px solid;transition:.3s;box-shadow:0 0 20px;cursor:pointer;}
+.node-lbl{position:absolute;font-size:9px;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;text-align:center;left:50%;transform:translateX(-50%);top:48px;color:var(--m1);}
+.node-price{font-size:8px;font-family:'DM Mono',monospace;color:var(--m1);text-align:center;left:50%;transform:translateX(-50%);position:absolute;top:58px;white-space:nowrap;}
+
+/* XRAY CODE OVERLAY */
+.xray-card{position:absolute;background:rgba(6,6,8,.96);border:1px solid var(--acc);border-radius:12px;padding:14px;font-family:'DM Mono',monospace;font-size:11px;line-height:1.7;color:#9da5b4;z-index:20;min-width:280px;max-width:340px;pointer-events:none;opacity:0;transition:.3s;box-shadow:0 0 30px rgba(255,79,11,.15);}
+.xray-card.show{opacity:1;}
+.xray-card-title{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.xray-card-title::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--acc);}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}.prop{color:#e06c75}
+.xray-copy{position:absolute;top:10px;right:10px;background:var(--b1);border:1px solid var(--b2);border-radius:5px;padding:2px 8px;font-size:9px;color:var(--m1);cursor:pointer;pointer-events:all;transition:.15s;}
+.xray-copy:hover{color:var(--tx);}
+
+/* RIGHT PANEL — ACTIVITY FEED */
+#panel-feed{grid-row:1/2;}
+.feed{padding:36px 0 14px;height:100%;overflow-y:auto;}
+.feed::-webkit-scrollbar{width:3px;}
+.feed::-webkit-scrollbar-track{background:transparent;}
+.feed::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+.feed-item{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.03);transition:.2s;cursor:pointer;}
+.feed-item:hover{background:var(--s1);}
+.feed-item.new{animation:feedIn .4s ease forwards;}
+@keyframes feedIn{from{background:rgba(255,79,11,.08);opacity:0;transform:translateX(10px)}to{background:transparent;opacity:1;transform:none}}
+.fi-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.fi-type{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-family:'DM Mono',monospace;}
+.fi-time{font-size:9px;color:var(--m2);font-family:'DM Mono',monospace;}
+.fi-body{font-size:12px;color:var(--m1);}
+.fi-body strong{color:var(--tx);font-weight:600;}
+.fi-hash{font-size:9px;color:var(--m2);font-family:'DM Mono',monospace;margin-top:2px;}
+.type-swap{color:var(--acc2);}
+.type-dca{color:var(--blue);}
+.type-bridge{color:var(--teal);}
+.type-private{color:var(--purple);}
+.type-stake{color:var(--amber);}
+
+/* BOTTOM BAR — 3 PANELS */
+#panel-savings{grid-column:1/2;grid-row:2/3;}
+#panel-action{grid-column:2/3;grid-row:2/3;}
+#panel-stats{grid-column:3/4;grid-row:2/3;}
+
+/* SAVINGS */
+.savings-wrap{padding:16px 18px;height:100%;}
+.savings-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--m2);font-family:'DM Mono',monospace;margin-bottom:10px;}
+.savings-big{font-family:'Barlow Condensed',sans-serif;font-size:42px;font-weight:900;color:var(--green);line-height:1;text-shadow:0 0 20px rgba(0,230,118,.3);}
+.savings-sub{font-size:11px;color:var(--m1);margin-top:4px;}
+.savings-vs{margin-top:12px;}
+.vs-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--b1);font-size:11px;}
+.vs-row:last-child{border-bottom:none;}
+.vs-chain{color:var(--m1);}
+.vs-cost{font-family:'DM Mono',monospace;font-weight:600;}
+.vs-cost.strike{text-decoration:line-through;color:var(--red);opacity:.7;}
+.vs-cost.free{color:var(--green);}
+
+/* ACTION PANEL */
+.action-wrap{padding:16px 20px;display:flex;gap:12px;align-items:flex-start;}
+.quick-swap{flex:1;}
+.qs-title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--m2);font-family:'DM Mono',monospace;margin-bottom:10px;}
+.qs-inputs{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.qs-inp{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:.15s;width:100%;}
+.qs-inp:focus{border-color:var(--b2);}
+.qs-arr{color:var(--m2);font-size:14px;flex-shrink:0;}
+.qs-btn{width:100%;padding:10px;background:var(--acc);color:#fff;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:.15s;}
+.qs-btn:hover{background:var(--acc2);}
+.qs-quote{font-size:10px;color:var(--m1);font-family:'DM Mono',monospace;text-align:center;margin-top:5px;min-height:16px;}
+.feature-btns{display:flex;flex-direction:column;gap:6px;}
+.feat-btn{padding:8px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--m1);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.15s;text-align:left;white-space:nowrap;}
+.feat-btn:hover{border-color:var(--b2);color:var(--tx);}
+.feat-btn span{display:block;font-size:9px;color:var(--m2);font-weight:400;margin-top:2px;}
+
+/* STATS */
+.stats-wrap{padding:16px 18px;}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.stat-box{background:var(--s1);border:1px solid var(--b1);border-radius:8px;padding:10px 12px;}
+.sb-l{font-size:9px;color:var(--m2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-family:'DM Mono',monospace;}
+.sb-v{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;line-height:1;}
+.sb-v.orange{color:var(--acc2);}
+.sb-v.green{color:var(--green);}
+.sb-v.blue{color:var(--blue);}
+.sb-v.purple{color:var(--purple);}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(12px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:.2s;}
+.modal-bg.show{opacity:1;pointer-events:all;}
+.modal{transform:scale(.95);transition:.2s;background:var(--s1);border:1px solid var(--b2);border-radius:18px;width:400px;max-width:94vw;overflow:hidden;}
+.modal-bg.show .modal{transform:scale(1);}
+.m-top{padding:24px 26px 18px;border-bottom:1px solid var(--b1);}
+.m-logo{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.m-logo-ic{width:34px;height:34px;background:var(--acc);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#fff;}
+.m-logo-tx{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;}
+.m-logo-tx span{color:var(--acc);}
+.m-title{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;margin-bottom:6px;}
+.m-sub{font-size:13px;color:var(--m1);line-height:1.6;}
+.m-body{padding:18px 26px 24px;}
+.m-section{font-size:10px;color:var(--m2);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 8px;font-weight:600;}
+.m-section:first-child{margin-top:0;}
+.s-btn{width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;border:1.5px solid var(--b1);background:transparent;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;margin-bottom:7px;}
+.s-btn:hover{border-color:var(--b2);background:var(--s2);}
+.s-btn.prim{background:var(--acc);border-color:var(--acc);color:#fff;}
+.s-btn.prim:hover{background:var(--acc2);}
+.s-ic{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;flex-shrink:0;font-size:13px;}
+.m-email{width:100%;padding:11px 14px;background:var(--s2);border:1.5px solid var(--b1);border-radius:10px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:.15s;margin-bottom:7px;}
+.m-email:focus{border-color:var(--acc);}
+.m-email::placeholder{color:var(--m2);}
+.m-close{position:absolute;top:16px;right:16px;background:var(--s2);border:1px solid var(--b1);border-radius:7px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--m1);cursor:pointer;font-size:15px;}
+.m-note{font-size:10px;color:var(--m2);text-align:center;margin-top:10px;line-height:1.6;}
+
+/* TX MODAL */
+.txm{background:var(--s1);border:1px solid var(--b2);border-radius:18px;width:360px;max-width:94vw;padding:24px;}
+.txm-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;margin-bottom:18px;}
+.tx-s{display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;}
+.tsd{width:9px;height:9px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+.tsd.done{background:var(--green);}
+.tsd.active{background:var(--acc);animation:txpulse 1s infinite;}
+@keyframes txpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,79,11,.4)}50%{box-shadow:0 0 0 5px rgba(255,79,11,0)}}
+.tsd.wait{background:var(--b2);}
+.ts-t{font-size:12px;font-weight:600;margin-bottom:2px;}
+.ts-s{font-size:10px;color:var(--m1);}
+.prog{height:2px;background:var(--b1);border-radius:1px;overflow:hidden;margin:14px 0;}
+.pf{height:100%;background:var(--acc);border-radius:1px;transition:width .9s ease;width:0%;}
+.tx-hbox{font-family:'DM Mono',monospace;font-size:9px;color:var(--m1);padding:8px;background:var(--s2);border-radius:7px;margin-top:6px;word-break:break-all;display:none;}
+.tx-hbox a{color:var(--acc2);}
+.btn-done{width:100%;margin-top:14px;padding:11px;background:var(--green);color:#fff;border:none;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;display:none;}
+
+@media(max-width:900px){
+  .grid{grid-template-columns:1fr;grid-template-rows:auto;height:auto;overflow-y:auto;}
+  html,body{overflow:auto;}
+  #panel-viz{height:400px;}
+  #panel-tokens,#panel-feed{height:300px;}
+  #panel-savings,#panel-action,#panel-stats{height:auto;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-ic">Z</div>
+    <span class="logo-tx">Starkzap <span>Command Center</span></span>
+    <span class="logo-sub">Live Dashboard</span>
+  </div>
+  <div class="topbar-center">
+    <div class="live-ind"><div class="live-dot"></div>LIVE</div>
+    <div class="stat-pill"><span class="label">TXS TODAY</span>&nbsp;<span class="value" id="tx-count">—</span></div>
+    <div class="stat-pill"><span class="label">STARKNET BLOCK</span>&nbsp;<span class="value" id="block-num">—</span></div>
+  </div>
+  <div class="topbar-right">
+    <div class="xray-toggle" id="xray-btn" onclick="toggleXRay()">
+      <span class="xray-ic">🔬</span>
+      <span id="xray-lbl">Dev X-Ray: OFF</span>
+    </div>
+    <div id="wallet-area">
+      <button class="connect-btn" onclick="openLogin()">Connect Wallet</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="grid">
+
+  <!-- LEFT: TOKEN PRICES -->
+  <div class="panel" id="panel-tokens">
+    <div class="panel-label">Live Prices</div>
+    <div class="token-list" id="token-list"></div>
+  </div>
+
+  <!-- CENTER: VISUALIZATION -->
+  <div class="panel" id="panel-viz">
+    <div class="panel-label">Ecosystem Flow</div>
+    <canvas id="flow-canvas"></canvas>
+    <div class="viz-overlay">
+      <div class="center-ring">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+        <div class="center-hub">Z</div>
+      </div>
+      <!-- Nodes placed by JS -->
+      <div id="nodes-container"></div>
+    </div>
+    <!-- XRAY CARDS -->
+    <div class="xray-card" id="xr-swap" style="top:20%;left:30%;">
+      <div class="xray-card-title">wallet.swap()</div>
+      <button class="xray-copy" onclick="copyCode('xr-swap')">copy</button>
+      <span class="kw">const</span> tx = <span class="kw">await</span> wallet.<span class="fn">swap</span>({<br>
+      &nbsp;&nbsp;tokenIn: STRK,<br>
+      &nbsp;&nbsp;tokenOut: USDC,<br>
+      &nbsp;&nbsp;amountIn: Amount.<span class="fn">parse</span>(<span class="str">"100"</span>, STRK),<br>
+      &nbsp;&nbsp;slippageBps: <span class="num">50n</span>,<br>
+      }, { feeMode: <span class="str">"sponsored"</span> });<br>
+      <span class="cm">// gas: $0.00 — sponsored by AVNU</span>
+    </div>
+    <div class="xray-card" id="xr-dca" style="top:15%;right:18%;">
+      <div class="xray-card-title">wallet.dca().create()</div>
+      <button class="xray-copy" onclick="copyCode('xr-dca')">copy</button>
+      <span class="kw">await</span> wallet.<span class="fn">dca</span>().<span class="fn">create</span>({<br>
+      &nbsp;&nbsp;tokenIn: USDC, tokenOut: ETH,<br>
+      &nbsp;&nbsp;amountInPerCycle: Amount.<span class="fn">parse</span>(<span class="str">"50"</span>, USDC),<br>
+      &nbsp;&nbsp;frequency: <span class="str">"P1W"</span>,<span class="cm"> // weekly</span><br>
+      });<br>
+      <span class="cm">// no cron jobs — protocol-level</span>
+    </div>
+    <div class="xray-card" id="xr-bridge" style="bottom:28%;left:22%;">
+      <div class="xray-card-title">wallet.deposit() — Bridge</div>
+      <button class="xray-copy" onclick="copyCode('xr-bridge')">copy</button>
+      <span class="kw">await</span> wallet.<span class="fn">deposit</span>(<br>
+      &nbsp;&nbsp;<span class="fn">fromAddress</span>(wallet.address),<br>
+      &nbsp;&nbsp;Amount.<span class="fn">parse</span>(<span class="str">"100"</span>, token.decimals, token.symbol),<br>
+      &nbsp;&nbsp;token, ethWallet,<br>
+      &nbsp;&nbsp;{ fastTransfer: <span class="kw">true</span> } <span class="cm">// CCTP ~20 min</span><br>
+      );
+    </div>
+    <div class="xray-card" id="xr-private" style="bottom:28%;right:16%;">
+      <div class="xray-card-title">confidentialTransfer()</div>
+      <button class="xray-copy" onclick="copyCode('xr-private')">copy</button>
+      <span class="kw">await</span> wallet.<span class="fn">tx</span>()<br>
+      &nbsp;&nbsp;.<span class="fn">confidentialTransfer</span>(confidential, {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;amount: Amount.<span class="fn">parse</span>(<span class="str">"50"</span>, USDC),<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;to: recipient.<span class="prop">recipientId</span>,<br>
+      &nbsp;&nbsp;}).<span class="fn">send</span>();<br>
+      <span class="cm">// on-chain: [encrypted]</span>
+    </div>
+    <div class="xray-card" id="xr-connect" style="top:50%;left:50%;transform:translate(-50%,-50%);margin-top:60px;">
+      <div class="xray-card-title">sdk.connectWallet()</div>
+      <button class="xray-copy" onclick="copyCode('xr-connect')">copy</button>
+      <span class="kw">const</span> sdk = <span class="kw">new</span> <span class="fn">StarkZap</span>({ network: <span class="str">"mainnet"</span> });<br>
+      <span class="kw">const</span> wallet = <span class="kw">await</span> sdk.<span class="fn">connectWallet</span>({<br>
+      &nbsp;&nbsp;account: { signer, accountClass: ArgentPreset },<br>
+      });<br>
+      <span class="cm">// social login + gasless + self-custody</span>
+    </div>
+  </div>
+
+  <!-- RIGHT: LIVE FEED -->
+  <div class="panel" id="panel-feed">
+    <div class="panel-label">Live Activity</div>
+    <div class="feed" id="live-feed"></div>
+  </div>
+
+  <!-- BOTTOM LEFT: GAS SAVINGS -->
+  <div class="panel" id="panel-savings">
+    <div class="savings-wrap">
+      <div class="savings-label">Total Gas Saved vs Ethereum</div>
+      <div class="savings-big">$<span id="gas-saved">0.00</span></div>
+      <div class="savings-sub">across all Starkzap transactions today</div>
+      <div class="savings-vs">
+        <div class="vs-row"><span class="vs-chain">Ethereum (Uniswap)</span><span class="vs-cost strike">~$8.40/swap</span></div>
+        <div class="vs-row"><span class="vs-chain">Polygon</span><span class="vs-cost strike">~$0.12/swap</span></div>
+        <div class="vs-row"><span class="vs-chain">Starkzap (Starknet)</span><span class="vs-cost free">$0.00 — sponsored</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM CENTER: QUICK SWAP -->
+  <div class="panel" id="panel-action">
+    <div class="action-wrap">
+      <div class="quick-swap">
+        <div class="qs-title">Quick Swap</div>
+        <div class="qs-inputs">
+          <input class="qs-inp" id="qs-amt" type="number" placeholder="100" value="100" oninput="updateQsQuote()">
+          <span class="qs-arr">→</span>
+          <select class="qs-inp" id="qs-pair" onchange="updateQsQuote()" style="cursor:pointer;">
+            <option value="STRK-USDC">STRK → USDC</option>
+            <option value="ETH-USDC">ETH → USDC</option>
+            <option value="USDC-ETH">USDC → ETH</option>
+            <option value="STRK-ETH">STRK → ETH</option>
+          </select>
+        </div>
+        <div class="qs-quote" id="qs-quote">≈ 47.82 USDC · impact 0.12%</div>
+        <button class="qs-btn" onclick="doQuickSwap()">⚡ SWAP NOW — ZERO GAS</button>
+      </div>
+      <div class="feature-btns">
+        <button class="feat-btn" onclick="openFeature('dca')">🔄 Set DCA Order<span>Protocol-level recurring buys</span></button>
+        <button class="feat-btn" onclick="openFeature('bridge')">🌉 Bridge Assets<span>Ethereum → Starknet · CCTP</span></button>
+        <button class="feat-btn" onclick="openFeature('private')">🔒 Private Transfer<span>ZK proof · amount hidden</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM RIGHT: STATS -->
+  <div class="panel" id="panel-stats">
+    <div class="stats-wrap">
+      <div class="panel-label" style="position:relative;top:auto;left:auto;margin-bottom:10px;">Protocol Stats</div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="sb-l">24H Swaps</div><div class="sb-v orange" id="st-swaps">—</div></div>
+        <div class="stat-box"><div class="sb-l">Volume</div><div class="sb-v green" id="st-vol">—</div></div>
+        <div class="stat-box"><div class="sb-l">DCA Orders</div><div class="sb-v blue" id="st-dca">—</div></div>
+        <div class="stat-box"><div class="sb-l">Private TXs</div><div class="sb-v purple" id="st-priv">—</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-bg" id="login-modal">
+  <div class="modal" onclick="event.stopPropagation()" style="position:relative;">
+    <button class="m-close" onclick="closeModal('login-modal')">✕</button>
+    <div class="m-top">
+      <div class="m-logo"><div class="m-logo-ic">Z</div><span class="m-logo-tx">Starkzap <span>Command</span></span></div>
+      <div class="m-title">Connect to trade</div>
+      <div class="m-sub">Zero gas fees · Full self-custody · No seed phrases shown</div>
+    </div>
+    <div class="m-body">
+      <div class="m-section">Starknet Wallets</div>
+      <button class="s-btn prim" onclick="connectExtension()">
+        <div class="s-ic" style="background:var(--acc);color:#fff;font-weight:800;font-size:11px;">A</div>
+        Argent X / Braavos
+        <span style="margin-left:auto;font-size:10px;opacity:.7;">Recommended</span>
+      </button>
+      <div class="m-section">Social Login (via Privy)</div>
+      <button class="s-btn" onclick="socialLogin('google')">
+        <div class="s-ic" style="background:#fff;"><svg width="14" height="14" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg></div>
+        Google
+      </button>
+      <button class="s-btn" onclick="socialLogin('discord')">
+        <div class="s-ic" style="background:#5865F2;border-radius:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.032.054a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg></div>
+        Discord
+      </button>
+      <button class="s-btn" onclick="socialLogin('twitter')">
+        <div class="s-ic" style="background:#000;border-radius:5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></div>
+        X (Twitter)
+      </button>
+      <div style="display:flex;align-items:center;gap:8px;margin:12px 0;color:var(--m2);font-size:10px;"><div style="flex:1;height:1px;background:var(--b1);"></div>or<div style="flex:1;height:1px;background:var(--b1);"></div></div>
+      <input class="m-email" type="email" placeholder="Email address">
+      <button class="s-btn" style="justify-content:center;" onclick="socialLogin('email')">Continue with Email →</button>
+      <div class="m-note">Powered by Starkzap SDK + Privy · Self-custody always preserved</div>
+    </div>
+  </div>
+</div>
+
+<!-- TX MODAL -->
+<div class="modal-bg" id="tx-modal">
+  <div class="modal txm">
+    <div class="txm-title" id="txm-title">Processing</div>
+    <div id="txm-steps"></div>
+    <div class="prog"><div class="pf" id="txm-pf"></div></div>
+    <div class="tx-hbox" id="txm-hash"></div>
+    <button class="btn-done" id="txm-done" onclick="closeModal('tx-modal')">✓ DONE</button>
+  </div>
+</div>
+
+<script>
+/* ── PRICES ── */
+const PRICES = {
+  ETH:  { usd: 3618.42, change: 2.14,  color: '#818cf8', bg: 'rgba(99,102,241,.2)', icon: 'E', name: 'Ethereum' },
+  STRK: { usd: 0.4782,  change: -1.23, color: '#FF7A3D', bg: 'rgba(255,79,11,.2)',  icon: 'S', name: 'Starknet Token' },
+  USDC: { usd: 1.0001,  change: 0.01,  color: '#60a5fa', bg: 'rgba(59,130,246,.2)', icon: 'U', name: 'USD Coin' },
+  BTC:  { usd: 93421,   change: 0.87,  color: '#fbbf24', bg: 'rgba(245,158,11,.2)', icon: 'B', name: 'Bitcoin' },
+  USDT: { usd: 1.0000,  change: 0.00,  color: '#4ade80', bg: 'rgba(34,197,94,.2)',  icon: 'T', name: 'Tether' },
+};
+
+const NODES = [
+  { sym:'ETH',  angle:0,   r:160 },
+  { sym:'STRK', angle:72,  r:160 },
+  { sym:'USDC', angle:144, r:160 },
+  { sym:'BTC',  angle:216, r:160 },
+  { sym:'USDT', angle:288, r:160 },
+];
+
+const FEED_TEMPLATES = [
+  { type:'swap',    label:'SWAP',    color:'type-swap',    msgs: ['100 STRK → 47.82 USDC','0.5 ETH → 1,809 USDC','250 USDC → 52.28 STRK','0.01 BTC → 934 USDC','1,000 USDT → 0.276 ETH'] },
+  { type:'dca',     label:'DCA',     color:'type-dca',     msgs: ['$50 USDC → ETH · cycle 7','$100 USDC → BTC · cycle 3','$25 USDC → STRK · cycle 12'] },
+  { type:'bridge',  label:'BRIDGE',  color:'type-bridge',  msgs: ['200 USDC ETH → Starknet · CCTP','0.1 ETH → Starknet · canonical','500 USDC Solana → Starknet'] },
+  { type:'private', label:'PRIVATE', color:'type-private', msgs: ['[encrypted] USDC · ZK proof','[encrypted] STRK · Tongo','[encrypted] ETH · confidential'] },
+  { type:'stake',   label:'STAKE',   color:'type-stake',   msgs: ['0.5 BTC staked · Starkzap','1000 STRK staked · 12.4% APY'] },
+];
+
+/* ── STATE ── */
+let xrayOn = false;
+let gasSaved = 0;
+let txCount = 2847;
+let swapCount = 1243;
+let volume = 2.4;
+let dcaCount = 187;
+let privCount = 64;
+let blockNum = 0;
+let connected = false;
+let userAddr = null;
+let particles = [];
+let animFrame = null;
+
+/* ── CANVAS FLOW ── */
+const canvas = document.getElementById('flow-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas(){
+  const p = document.getElementById('panel-viz');
+  canvas.width = p.offsetWidth;
+  canvas.height = p.offsetHeight;
+}
+
+function getNodePos(node){
+  const cx = canvas.width/2, cy = canvas.height/2;
+  const rad = (node.angle - 90) * Math.PI / 180;
+  const r = Math.min(canvas.width, canvas.height) * 0.34;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function spawnParticle(){
+  const from = NODES[Math.floor(Math.random()*NODES.length)];
+  const toCenter = Math.random() > 0.4;
+  const to = toCenter ? null : NODES[Math.floor(Math.random()*NODES.length)];
+  if(!toCenter && to === from) return;
+  const p = PRICES[from.sym];
+  const fp = getNodePos(from);
+  const tp = toCenter ? { x: canvas.width/2, y: canvas.height/2 } : getNodePos(to);
+  particles.push({
+    x: fp.x, y: fp.y,
+    tx: tp.x, ty: tp.y,
+    sx: fp.x, sy: fp.y,
+    progress: 0,
+    speed: 0.006 + Math.random() * 0.008,
+    color: p.color,
+    size: 2 + Math.random() * 2,
+    trail: [],
+    alpha: 1,
+  });
+}
+
+function drawFrame(){
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // draw edges
+  NODES.forEach(n=>{
+    const p = getNodePos(n);
+    const col = PRICES[n.sym].color;
+    ctx.beginPath();
+    ctx.moveTo(canvas.width/2, canvas.height/2);
+    ctx.lineTo(p.x, p.y);
+    const grad = ctx.createLinearGradient(canvas.width/2, canvas.height/2, p.x, p.y);
+    grad.addColorStop(0, `${col}22`);
+    grad.addColorStop(1, `${col}08`);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // update & draw particles
+  particles = particles.filter(p => p.progress <= 1 && p.alpha > 0);
+  particles.forEach(p=>{
+    p.progress += p.speed;
+    if(p.progress > 1) p.progress = 1;
+    const t = p.progress;
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    p.x = p.sx + (p.tx - p.sx) * ease;
+    p.y = p.sy + (p.ty - p.sy) * ease;
+    p.trail.unshift({ x: p.x, y: p.y });
+    if(p.trail.length > 12) p.trail.pop();
+    if(p.progress >= 0.9) p.alpha = (1 - p.progress) * 10;
+
+    // draw trail
+    for(let i=0; i<p.trail.length-1; i++){
+      const a = (1 - i/p.trail.length) * p.alpha * 0.6;
+      ctx.beginPath();
+      ctx.moveTo(p.trail[i].x, p.trail[i].y);
+      ctx.lineTo(p.trail[i+1].x, p.trail[i+1].y);
+      ctx.strokeStyle = p.color + Math.floor(a*255).toString(16).padStart(2,'0');
+      ctx.lineWidth = p.size * (1 - i/p.trail.length);
+      ctx.stroke();
+    }
+    // draw dot
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = p.alpha;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // glow
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size*2.5, 0, Math.PI*2);
+    ctx.fillStyle = p.color + '20';
+    ctx.fill();
+  });
+
+  animFrame = requestAnimationFrame(drawFrame);
+}
+
+function positionNodes(){
+  const viz = document.getElementById('panel-viz');
+  const cx = viz.offsetWidth/2, cy = viz.offsetHeight/2;
+  const r = Math.min(viz.offsetWidth, viz.offsetHeight) * 0.34;
+  const container = document.getElementById('nodes-container');
+  container.innerHTML = '';
+  NODES.forEach(n=>{
+    const rad = (n.angle - 90) * Math.PI/180;
+    const x = cx + r * Math.cos(rad);
+    const y = cy + r * Math.sin(rad);
+    const p = PRICES[n.sym];
+    const div = document.createElement('div');
+    div.className = 'node';
+    div.style.cssText = `left:${x}px;top:${y}px;`;
+    div.innerHTML = `
+      <div class="node-ic" style="background:${p.bg};color:${p.color};border-color:${p.color}40;box-shadow:0 0 16px ${p.color}30;" onclick="highlightNode('${n.sym}')">${p.icon}</div>
+      <div class="node-lbl">${n.sym}</div>
+      <div class="node-price" id="np-${n.sym}">$${p.usd < 1 ? p.usd.toFixed(4) : p.usd.toLocaleString()}</div>`;
+    container.appendChild(div);
+  });
+}
+
+/* ── TOKEN LIST ── */
+function renderTokenList(){
+  const el = document.getElementById('token-list');
+  const syms = ['ETH','STRK','USDC','BTC','USDT'];
+  el.innerHTML = syms.map(sym=>{
+    const p = PRICES[sym];
+    const bar = Math.min(100, Math.abs(p.change)*15 + 30);
+    return `<div class="tok-row">
+      <div class="tok-ic" style="background:${p.bg};color:${p.color};">${p.icon}</div>
+      <div class="tok-info"><div class="tok-sym">${sym}</div><div class="tok-name">${p.name}</div></div>
+      <div class="tok-price">
+        <div class="tok-usd" style="color:${p.color}">$${p.usd < 1 ? p.usd.toFixed(4) : p.usd.toLocaleString()}</div>
+        <div class="tok-change ${p.change >= 0 ? 'up' : 'down'}">${p.change >= 0 ? '+' : ''}${p.change.toFixed(2)}%</div>
+        <div class="price-bar"><div class="price-fill" style="width:${bar}%;background:${p.color};"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── LIVE FEED ── */
+function addFeedItem(){
+  const template = FEED_TEMPLATES[Math.floor(Math.random()*FEED_TEMPLATES.length)];
+  const msg = template.msgs[Math.floor(Math.random()*template.msgs.length)];
+  const hash = '0x' + Math.random().toString(16).substr(2,8) + '...' + Math.random().toString(16).substr(2,4);
+  const feed = document.getElementById('live-feed');
+  const item = document.createElement('div');
+  item.className = 'feed-item new';
+  item.innerHTML = `
+    <div class="fi-top">
+      <span class="fi-type ${template.color}">${template.label}</span>
+      <span class="fi-time">just now</span>
+    </div>
+    <div class="fi-body"><strong>${msg}</strong></div>
+    <div class="fi-hash">${hash}</div>`;
+  feed.insertBefore(item, feed.firstChild);
+  while(feed.children.length > 20) feed.removeChild(feed.lastChild);
+
+  // update stats
+  txCount++; swapCount++;
+  if(template.type==='dca') dcaCount++;
+  if(template.type==='private') privCount++;
+  gasSaved += (8.40 + Math.random()*2);
+  document.getElementById('gas-saved').textContent = gasSaved.toFixed(2);
+  document.getElementById('tx-count').textContent = txCount.toLocaleString();
+  document.getElementById('st-swaps').textContent = swapCount.toLocaleString();
+  document.getElementById('st-vol').textContent = '$' + (volume + txCount*0.0001).toFixed(1)+'M';
+  document.getElementById('st-dca').textContent = dcaCount;
+  document.getElementById('st-priv').textContent = privCount;
+}
+
+/* ── PRICES LIVE TICK ── */
+function tickPrices(){
+  ['ETH','STRK','BTC'].forEach(sym=>{
+    PRICES[sym].usd *= (1 + (Math.random()-0.5)*0.001);
+    PRICES[sym].change += (Math.random()-0.5)*0.1;
+    const el = document.getElementById('np-'+sym);
+    if(el) el.textContent = '$' + (PRICES[sym].usd < 1 ? PRICES[sym].usd.toFixed(4) : PRICES[sym].usd.toLocaleString(undefined,{maximumFractionDigits:2}));
+  });
+  renderTokenList();
+}
+
+/* ── BLOCK NUMBER ── */
+async function fetchBlock(){
+  try {
+    const r = await fetch('https://starknet-mainnet.public.blastapi.io', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({jsonrpc:'2.0',method:'starknet_blockNumber',params:[],id:1})
+    });
+    const d = await r.json();
+    if(d.result){
+      blockNum = d.result;
+      document.getElementById('block-num').textContent = '#' + blockNum.toLocaleString();
+    }
+  } catch(e){ document.getElementById('block-num').textContent = '#' + (500000+Math.floor(Math.random()*9999)); }
+}
+
+/* ── XRAY ── */
+function toggleXRay(){
+  xrayOn = !xrayOn;
+  const btn = document.getElementById('xray-btn');
+  const lbl = document.getElementById('xray-lbl');
+  btn.classList.toggle('on', xrayOn);
+  lbl.textContent = `Dev X-Ray: ${xrayOn ? 'ON' : 'OFF'}`;
+  const cards = document.querySelectorAll('.xray-card');
+  cards.forEach(c => c.classList.toggle('show', xrayOn));
+}
+
+function copyCode(id){
+  const el = document.getElementById(id);
+  const text = el.innerText.replace('copy','').trim();
+  navigator.clipboard.writeText(text).catch(()=>{});
+  const btn = el.querySelector('.xray-copy');
+  if(btn){ btn.textContent='copied ✓'; setTimeout(()=>btn.textContent='copy',1500); }
+}
+
+/* ── QUICK SWAP QUOTE ── */
+function updateQsQuote(){
+  const amt = parseFloat(document.getElementById('qs-amt').value)||100;
+  const pair = document.getElementById('qs-pair').value;
+  const [from,to] = pair.split('-');
+  const fPrice = PRICES[from]?.usd||1;
+  const tPrice = PRICES[to]?.usd||1;
+  const out = (amt * fPrice / tPrice).toFixed(tPrice > 100 ? 6 : 2);
+  const impact = (Math.random()*0.2+0.05).toFixed(2);
+  document.getElementById('qs-quote').textContent = `≈ ${out} ${to} · impact ${impact}% · gas $0.00`;
+}
+
+/* ── AUTH ── */
+function openLogin(){ document.getElementById('login-modal').classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+async function connectExtension(){
+  closeModal('login-modal');
+  if(!window.starknet){ showTx('No wallet found',
+    [{t:'Install Argent X or Braavos',s:'Visit argent.xyz or braavos.app'}]); return; }
+  showTx('Connecting Wallet',[
+    {t:'Requesting wallet access',s:'Check your extension for a prompt'},
+    {t:'Reading chain ID',s:'Detecting Mainnet or Sepolia'},
+    {t:'Ready',s:'ZapDEX connected'},
+  ], async (upd)=>{
+    const accounts = await window.starknet.enable();
+    userAddr = accounts[0];
+    upd(1); await sleep(500); upd(2);
+    return {skip_hash:true};
+  }, setConnected);
+}
+
+function socialLogin(method){
+  closeModal('login-modal');
+  const n = {google:'Google',discord:'Discord',twitter:'X',email:'Email'};
+  showTx(`Sign in with ${n[method]||method}`,[
+    {t:`Authenticating via ${n[method]||method}`,s:'Privy secure OAuth flow'},
+    {t:'Creating Starknet smart wallet',s:'Cartridge Controller account abstraction'},
+    {t:'Ready',s:'Connected to Starknet Sepolia'},
+  ], async(upd)=>{ await sleep(800);upd(1);await sleep(900);upd(2);return{skip_hash:true}; },
+  ()=>{ userAddr='0x02e9ce5c...e9eB'; setConnected(); });
+}
+
+function setConnected(){
+  connected=true;
+  document.getElementById('wallet-area').innerHTML=`
+    <div class="wallet-chip">
+      <div class="wc-dot"></div>
+      <span class="wc-addr">${userAddr?userAddr.slice(0,10)+'...'+userAddr.slice(-4):'0x02e9...e9eB'}</span>
+    </div>`;
+}
+
+function doQuickSwap(){
+  if(!connected){ openLogin(); return; }
+  const pair = document.getElementById('qs-pair').value;
+  const [from,to] = pair.split('-');
+  const amt = document.getElementById('qs-amt').value || '100';
+  showTx(`Swap ${from} → ${to}`,[
+    {t:'Building calldata',s:`Starkzap SDK → wallet.swap()`},
+    {t:`Routing via AVNU`,s:`Finding best ${from}/${to} price`},
+    {t:'Signing & broadcasting',s:'Awaiting wallet confirmation'},
+    {t:'Confirmed on Starknet',s:'Transaction included in block'},
+  ]);
+}
+
+function openFeature(f){
+  if(!connected){ openLogin(); return; }
+  const cfg = {
+    dca:    { title:'Create DCA Order',     steps:[{t:'Approving USDC',s:'Token allowance'},{t:'Scheduling',s:'Protocol-level order'},{t:'Confirmed',s:'DCA active on Starknet'}] },
+    bridge: { title:'Bridge to Starknet',   steps:[{t:'Source chain init',s:'Ethereum wallet'},{t:'CCTP attestation',s:'Circle bridge'},{t:'Minting',s:'Starknet receipt'},{t:'Done',s:'Funds arrived'}] },
+    private:{ title:'Private Transfer',     steps:[{t:'Generating ZK proof',s:'Tongo client-side'},{t:'Encrypting amount',s:'Hidden from chain'},{t:'Confirmed',s:'[encrypted] on-chain'}] },
+  };
+  const c = cfg[f];
+  showTx(c.title, c.steps);
+}
+
+/* ── TX MODAL ── */
+let txSteps = 0;
+function showTx(title, steps, execFn, onDone){
+  document.getElementById('txm-title').textContent = title;
+  txSteps = steps.length;
+  document.getElementById('txm-steps').innerHTML = steps.map((s,i)=>`
+    <div class="tx-s"><div class="tsd ${i===0?'active':'wait'}" id="td-${i}"></div>
+    <div><div class="ts-t">${s.t}</div><div class="ts-s">${s.s}</div></div></div>`).join('');
+  document.getElementById('txm-pf').style.width='0%';
+  document.getElementById('txm-hash').style.display='none';
+  document.getElementById('txm-done').style.display='none';
+  document.getElementById('tx-modal').classList.add('show');
+
+  if(!execFn){ autoSteps(steps,onDone); return; }
+  runExec(steps, execFn, onDone);
+}
+
+async function autoSteps(steps, onDone){
+  for(let i=0;i<steps.length;i++){
+    await sleep(700+Math.random()*400);
+    advance(i, Math.round((i+1)/steps.length*100));
+  }
+  finishTx(null, onDone);
+}
+
+async function runExec(steps, execFn, onDone){
+  advance(0,20);
+  try {
+    const upd = i=>advance(i, Math.round((i+1)/steps.length*100));
+    await sleep(400); advance(1,40);
+    const res = await execFn(upd);
+    advance(steps.length-1,100);
+    finishTx(res?.skip_hash?null:res?.hash, onDone);
+  } catch(e){
+    document.getElementById('txm-hash').textContent='Error: '+e.message;
+    document.getElementById('txm-hash').style.display='block';
+    document.getElementById('txm-done').style.display='block';
+    document.getElementById('txm-done').style.background='var(--red)';
+    document.getElementById('txm-done').textContent='✕ CLOSE';
+  }
+}
+
+function advance(i, pct){
+  if(i>0) document.getElementById('td-'+(i-1))?.setAttribute('class','tsd done');
+  document.getElementById('td-'+i)?.setAttribute('class','tsd active');
+  document.getElementById('txm-pf').style.width=pct+'%';
+}
+
+function finishTx(hash, onDone){
+  for(let i=0;i<txSteps;i++) document.getElementById('td-'+i)?.setAttribute('class','tsd done');
+  document.getElementById('txm-pf').style.width='100%';
+  if(hash){
+    const el=document.getElementById('txm-hash');
+    el.innerHTML=`<a href="https://starkscan.co/tx/${hash}" target="_blank">${hash} ↗ Starkscan</a>`;
+    el.style.display='block';
+  }
+  document.getElementById('txm-done').style.display='block';
+  if(onDone) setTimeout(onDone,400);
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+/* ── INIT ── */
+window.addEventListener('resize',()=>{
+  resizeCanvas(); positionNodes();
+  cancelAnimationFrame(animFrame); drawFrame();
+});
+
+resizeCanvas();
+positionNodes();
+drawFrame();
+renderTokenList();
+updateQsQuote();
+fetchBlock();
+
+// initial feed
+for(let i=0;i<6;i++) setTimeout(addFeedItem, i*300);
+
+// live intervals
+setInterval(()=>{ spawnParticle(); if(Math.random()>.6) spawnParticle(); }, 400);
+setInterval(addFeedItem, 2200);
+setInterval(tickPrices, 3000);
+setInterval(fetchBlock, 15000);
+setInterval(()=>{ gasSaved+=0.84; document.getElementById('gas-saved').textContent=gasSaved.toFixed(2); }, 800);
+
+// check for existing wallet
+if(window.starknet?.isConnected && window.starknet?.selectedAddress){
+  userAddr = window.starknet.selectedAddress; setConnected();
+}
+</script>
+</body>
+</html>
